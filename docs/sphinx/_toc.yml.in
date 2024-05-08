@@ -28,6 +28,7 @@ subtrees:
   - file: how-to/performance_guidelines
   - file: how-to/debugging
   - file: how-to/logging
+  - file: how-to/cooperative_groups
   - file: how-to/faq
 
 - caption: Reference
@@ -37,7 +38,10 @@ subtrees:
     title: C++ language extensions
   - file: reference/terms
     title: Comparing Syntax for different APIs
+  - file: reference/cooperative_groups
+    title: Cooperative Groups API
   - file: reference/virtual_rocr
+    title: HSA Runtime API for ROCm
   - file: reference/deprecated_api_list
     title: List of deprecated APIs
 
