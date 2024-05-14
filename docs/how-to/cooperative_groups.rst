@@ -146,26 +146,7 @@ Constructed via:
 
 The ``group_index()`` , ``thread_index()`` , ``thread_rank()`` , ``size()``, ``cg_type()``,  
 ``is_valid()`` , ``sync()`` and ``group_dim()`` member functions are public of the 
-thread_block class. For further details check the :doc:`thread_block references <reference:cooperative_groups>` . 
-
-Tiled Group
--------------
-
-Represents one tiled thread group in a wavefront. This group type also supports sub-wave
-level intrinsics.
-
-.. code-block:: C++
-  
-  class thread_block;
-
-Constructed via:
-
-.. code-block:: C++
-  
-  thread_block g = this_thread_block();
-
-The ``thread_rank()`` , ``size()``, ``cg_type()``, ``is_valid()`` and ``sync()`` member functions
-are public of the ``thread_block`` class. For further details check the :doc:`thread_block references <reference:cooperative_groups>`. 
+thread_block class. For further details check the :ref:`thread_block references <thread_block_ref>` . 
 
 Grid Group
 ------------
@@ -185,7 +166,7 @@ Constructed via:
   grid_group g = this_grid();
 
 The ``thread_rank()`` , ``size()``, ``cg_type()``, ``is_valid()`` and ``sync()`` member functions
-are public of the ``grid_group`` class. For further details check the :doc:`grid_group references <reference:cooperative_groups>`. 
+are public of the ``grid_group`` class. For further details check the :ref:`grid_group references <grid_group_ref>`. 
 
 Multi Grid Group
 ------------------
@@ -207,7 +188,7 @@ Constructed via:
 
 The ``num_grids()`` , ``grid_rank()`` , ``thread_rank()``, ``size()``, ``cg_type()``, ``is_valid()`` ,
 and ``sync()`` member functions are public of the ``multi_grid_group`` class. For
-further details check the :doc:`multi_grid_group references <reference:cooperative_groups>` . 
+further details check the :ref:`multi_grid_group references <multi_grid_group_ref>` . 
 
 Thread Block Tile
 ------------------
@@ -236,7 +217,7 @@ Constructed via:
 The ``thread_rank()`` , ``size()``, ``cg_type()``, ``is_valid()``, ``sync()``, 
 ``meta_group_rank()``, ``meta_group_size()``, ``shfl(...)``, ``shfl_down(...)``, 
 ``shfl_up(...)`` and ``shfl_xor(...)`` member functions are public of the ``thread_block_tile``
-class. For further details check the :doc:`thread_block_tile references <reference:cooperative_groups>` . 
+class. For further details check the :ref:`thread_block_tile references <thread_block_tile_ref>` . 
 
 Coalesced Groups
 ------------------
@@ -261,7 +242,7 @@ Constructed via:
 The ``thread_rank()`` , ``size()``, ``cg_type()``, ``is_valid()``, ``sync()``, 
 ``meta_group_rank()``, ``meta_group_size()``, ``shfl(...)``, ``shfl_down(...)``, 
 and ``shfl_up(...)`` member functions are public of the ``coalesced_group`` class. 
-For further details check the :doc:`coalesced_group references <reference:cooperative_groups>` .
+For further details check the :ref:`coalesced_group references <coalesced_group_ref>` .
 
 Synchronization
 =================
