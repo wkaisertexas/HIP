@@ -22,16 +22,35 @@ The following functions are located in the https://github.com/ROCm/clr repositor
 
 .. doxygenfunction:: cooperative_groups::tiled_partition(const thread_group &parent, unsigned int tile_size)
 
+.. doxygenfunction:: cooperative_groups::group_size
+
+.. doxygenfunction:: cooperative_groups::thread_rank
+
+.. doxygenfunction:: cooperative_groups::is_valid
+
+.. doxygenfunction:: cooperative_groups::sync
+
+.. _thread_block_ref:
+
 .. doxygenclass:: cooperative_groups::thread_block
+   :members:
 
-.. doxygenclass:: cooperative_groups::thread_block_tile_type
-
-.. doxygenclass:: cooperative_groups::thread_group
+.. _grid_group_ref:
 
 .. doxygenclass:: cooperative_groups::grid_group
+   :members:
+
+.. _multi_grid_group_ref:
 
 .. doxygenclass:: cooperative_groups::multi_grid_group
+   :members:
+   
+.. _thread_block_tile_ref:
 
-.. doxygenclass:: cooperative_groups::tiled_group
+.. doxygenclass:: cooperative_groups::thread_block_tile
+   :members:
+
+.. _coalesced_group_ref:
 
 .. doxygenclass:: cooperative_groups::coalesced_group
+   :members:

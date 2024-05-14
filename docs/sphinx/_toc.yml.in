@@ -38,7 +38,7 @@ subtrees:
     title: C++ language extensions
   - file: reference/terms
     title: Comparing Syntax for different APIs
-  - file: reference/cooperative_groups
+  - file: reference/cooperative_groups_reference
     title: Cooperative Groups API
   - file: reference/virtual_rocr
     title: HSA Runtime API for ROCm
