@@ -47,7 +47,7 @@ Reduction on GPUs
 =================
 
 Implementing reductions on GPUs will require a basic understanding of the
-{doc}`/understand/programming_model_reference`. The article explores aspects of low-level
+:doc:`/understand/programming_model_reference`. The article explores aspects of low-level
 optimization best discussed through the {ref}`inherent_thread_model`, and as
 such will refrain from using Cooperative Groups.
 
@@ -326,76 +326,81 @@ Consider the following code:
 
 This compiles to the following binaries:
 
-    * - **LLVM Block**
-      - **GCC**
-	  - **MSVC**
+**LLVM Block**
 
-    * - .. code-block:: asm
+.. code-block::
 
-			main:
-				push    rbx
-				lea     rbx, [rip + .L.str]
-				mov     rdi, rbx
-				xor     esi, esi
-				xor     eax, eax
-				call    printf@PLT
-				mov     rdi, rbx
-				mov     esi, 1
-				xor     eax, eax
-				call    printf@PLT
-				mov     rdi, rbx
-				mov     esi, 2
-				xor     eax, eax
-				call    printf@PLT
-				mov     rdi, rbx
-				mov     esi, 3
-				xor     eax, eax
-				call    printf@PLT
-				xor     eax, eax
-				pop     rbx
-				ret
-			.L.str:
-				.asciz  "%d"
+	main:
+		push    rbx
+		lea     rbx, [rip + .L.str]
+		mov     rdi, rbx
+		xor     esi, esi
+		xor     eax, eax
+		call    printf@PLT
+		mov     rdi, rbx
+		mov     esi, 1
+		xor     eax, eax
+		call    printf@PLT
+		mov     rdi, rbx
+		mov     esi, 2
+		xor     eax, eax
+		call    printf@PLT
+		mov     rdi, rbx
+		mov     esi, 3
+		xor     eax, eax
+		call    printf@PLT
+		xor     eax, eax
+		pop     rbx
+		ret
+	.L.str:
+		.asciz  "%d"
 
-	 - .. code-block:: asm
 
-			.LC0:
-				.string "%d"
-			main:
-				push    rbx
-				xor     ebx, ebx
-			.L2:
-				mov     esi, ebx
-				mov     edi, OFFSET FLAT:.LC0
-				xor     eax, eax
-				add     ebx, 1
-				call    printf
-				cmp     ebx, 4
-				jne     .L2
-				xor     eax, eax
-				pop     rbx
-				ret
+**GCC**
 
-	 - .. code-block:: asm
+.. code-block:: asm
 
-			main    PROC
-			$LN12:
-				push    rbx
-				sub     rsp, 32
-				xor     ebx, ebx
-				npad    8
-			$LL4@main:
-				mov     edx, ebx
-				lea     rcx, OFFSET FLAT:`string'
-				call    printf
-				inc     ebx
-				cmp     ebx, 4
-				jl      SHORT $LL4@main
-				xor     eax, eax
-				add     rsp, 32
-				pop     rbx
-				ret     0
-			main    ENDP
+	.LC0:
+		.string "%d"
+	main:
+		push    rbx
+		xor     ebx, ebx
+	.L2:
+		mov     esi, ebx
+		mov     edi, OFFSET FLAT:.LC0
+		xor     eax, eax
+		add     ebx, 1
+		call    printf
+		cmp     ebx, 4
+		jne     .L2
+		xor     eax, eax
+		pop     rbx
+		ret
+
+
+**MSVC**
+
+.. code-block::
+
+	main    PROC
+		$LN12:
+		push    rbx
+		sub     rsp, 32
+		xor     ebx, ebx
+		npad    8
+	$LL4@main:
+		mov     edx, ebx
+		lea     rcx, OFFSET FLAT:'string'
+		call    printf
+		inc     ebx
+		cmp     ebx, 4
+		jl      SHORT $LL4@main
+		xor     eax, eax
+		add     rsp, 32
+		pop     rbx
+		ret     0
+	main    ENDP
+
 
 LLVM unrolls the the loop and compiles to a flat series of ``printf`` invocations
 while GCC and MSVC both agree to keep the loop intact, visible from the compare
