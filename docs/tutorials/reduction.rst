@@ -7,11 +7,11 @@ ubiquitous enough to be of general interest while providing an excuse to
 introduce some key considerations of designing GPU algorithms and optimizing
 them.
 
-_(This article is a rejuvenation and extension of the invaluable work of Mark
+*This article is a rejuvenation and extension of the invaluable work of Mark
 Harris. While the author usually approaches the topic starting from a less
 naive approach, it is still valuable to rehash some of the original material to
 see how much the underlying hardware has changed. This article will go beyond
-to demonstrate progress in the state of the art since.)_
+to demonstrate progress in the state of the art since.*
 
 The algorithm
 =============
@@ -309,14 +309,10 @@ The ``tmp`` namespace used beyond this point in the chapter holds a handful of
 template meta-programmed utilities to facilitate writing flexible _and_ optimal
 code.
 
-<details>
-
-<summary>
-<code>tmp::static_for</code> is a variation of the language <code>for</code>
+:code:`tmp::static_for` is a variation of the language :code:`for`
 loop where the running index is a compile-time constant and is eligible for use
 in compile-time evaluated contexts not just constant folding within the
 optimizer.
-</summary>
 
 Consider the following code:
 
@@ -440,15 +436,9 @@ give it a name at the end. An important bonus is that in the body of the loop
 we can use the running index ``i`` in contexts requiring constant expressions:
 as template arguments or inside ``if constexpr``.
 
-</details>
-
-<details>
-
-<summary>
-<code>tmp::static_switch</code> takes run-time value and run-time dispatches to
+:code:`tmp::static_switch` takes run-time value and run-time dispatches to
 a range set of tabulated functions where said value is a compile-time constant
 and is eligible for use in compile-time evaluated contexts.
-</summary>
 
 Consider the following code:
 
@@ -476,8 +466,6 @@ equiavalent to:
 	{
 		hipLaunchKernelGGL(kernel<WarpSize>, ...);
 	});
-
-</details>
 
 .. code-block:: diff
 
