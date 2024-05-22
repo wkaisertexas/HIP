@@ -6,7 +6,7 @@
 Cooperative Groups in HIP
 *******************************************************************************
 
-The Cooperative Groups is an extension of the exsiting ROCm programming model, 
+The Cooperative Groups is an extension of the existing ROCm programming model, 
 to get a more flexible grouping mechanism for the Developers. This feature was 
 introduced with CUDA 9 at NVIDIA GPUs and with ROCm 4.1 at AMD GPUs.
 
