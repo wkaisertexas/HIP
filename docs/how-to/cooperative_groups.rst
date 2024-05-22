@@ -172,7 +172,7 @@ Multi Grid Group
 ------------------
 
 Represents an inter-device cooperative group type where the participating threads
-within the group spans across multple devices, running the (same) kernel on these devices
+within the group spans across multiple devices, running the (same) kernel on these devices
 All the mutli grid group APIs require that you have used the appropriate launch API.
 
 .. code-block:: C++
