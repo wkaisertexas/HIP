@@ -50,6 +50,7 @@ The CUDA enabled NVIDIA GPUs are supported by HIP. For more information, see [GP
 * [C++ language extensions](./reference/kernel_language)
 * [Comparing Syntax for different APIs](./reference/terms)
 * [HSA Runtime API for ROCm](./reference/virtual_rocr)
+* [Unified Memory](./reference/unified_memory)
 * [List of deprecated APIs](./reference/deprecated_api_list)
 
 :::

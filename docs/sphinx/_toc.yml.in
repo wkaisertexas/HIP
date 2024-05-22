@@ -38,6 +38,8 @@ subtrees:
   - file: reference/terms
     title: Comparing Syntax for different APIs
   - file: reference/virtual_rocr
+  - file: reference/unified_memory
+    title: Unified Memory
   - file: reference/deprecated_api_list
     title: List of deprecated APIs
 
