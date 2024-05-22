@@ -193,7 +193,7 @@ further details check the :ref:`multi_grid_group references <multi_grid_group_re
 Thread Block Tile
 ------------------
 
-This constructs a templated class derieved from thread_group. The template defines tile
+This constructs a templated class derived from ``thread_group``. The template defines tile
 size of the new thread group at compile time.
 
 .. code-block:: C++
