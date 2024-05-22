@@ -21,7 +21,7 @@ elements:
 * Operations to inspect the group properties;
 * Collectives that expose low-level, group-specific and often HW accelerated, operations.
 
-The code differenc to the original block model can be find in the following table. 
+The code difference to the original block model can be found in the following table. 
 
 .. list-table:: Cooperative Group Example
     :header-rows: 1
