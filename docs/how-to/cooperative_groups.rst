@@ -247,7 +247,7 @@ For further details check the :ref:`coalesced_group references <coalesced_group_
 Synchronization
 =================
 
-At different type of gourps the synchronization requires to used the correct cooperative group
+At different types of groups, the synchronization requires using the correct cooperative group
 launch API.
 
 Thread-Block Synchronization
