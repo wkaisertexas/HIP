@@ -222,7 +222,7 @@ class. For further details check the :ref:`thread_block_tile references <thread_
 Coalesced Groups
 ------------------
 
-Represents a active thread group in a wavefront. This group type also supports sub-wave level
+Represents an active thread group in a wavefront. This group type also supports sub-wave level
 intrinsics.
 
 .. code-block:: C++
