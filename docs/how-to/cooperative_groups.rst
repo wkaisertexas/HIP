@@ -125,7 +125,7 @@ has to be used.
 Group Types
 =============
 
-There are different group types for based on different level on grouping.
+There are different group types based on different levels of grouping.
 
 Thread Block Group
 --------------------
