@@ -48,15 +48,15 @@ Reduction on GPUs
 
 Implementing reductions on GPUs requires a basic understanding of the
 :doc:`/understand/programming_model_reference`. The article explores aspects of low-level
-optimization best discussed through the {ref}`inherent_thread_model`, and as
+optimization best discussed through the :ref:`inherent_thread_model`, and as
 such will refrain from using Cooperative Groups.
 
 Synchronizing parallel threads of execution across a GPU will be crucial for
 correctness; we can't start combining partial results before they manifest.
-Synchronizing _all_ the threads running on a GPU at any given time while
-possible, is a costly and/or intricate operation. If not absolutely necessary,
-we'll map our parallel algorithm as such that Multi Processors / Blocks can
-make independent progress and need not sync often.
+Synchronizing _all_ the threads running on a GPU at any given time, while
+possible, is a costly and/or intricate operation. If synchronization is not
+absolutely necessary, map the parallel algorithm so that multi-processors and
+blocks can make independent progress and need not sync often.
 
 1. Naive shared reduction
 --------------------------
@@ -188,7 +188,7 @@ branch) for longer than necessary.
 2. Reducing thread divergence
 -----------------------------
 
-One may reduce divergence by keeping dataflow between memory addresses
+You can reduce divergence by keeping dataflow between memory addresses
 identical but reassigning the thread ids.
 
 .. figure:: ../data/tutorial/reduction/reduced_divergence_reduction.svg
@@ -196,7 +196,7 @@ identical but reassigning the thread ids.
 
 .. note::
 
-	For those less proficient in reading Git diffs, the coming code segments show
+	For those less proficient in reading Git diffs, the following code segments show
 	changes between versions of a file. Lines highlighted in red are removed or
 	changed while lines highlighted green are being introduced.
 
@@ -299,7 +299,7 @@ limited by instruction throughput.
 5. Omit superfluous synchronization
 -----------------------------------
 
-Warps/Wavefronts are known to execute in a strictly* lockstep fashion,
+Warps/Wavefronts are known to execute in a strictly lockstep fashion,
 therefore once shared reduction has reached a point when it's only a single
 warp participating meaningfully, we can cut short the loop and let the rest of
 the warps terminate, moreover without the need for syncing the entire block, we
@@ -636,11 +636,11 @@ out of the result moved inside due to variable scoping.)
 8. Prefer warp communication over shared
 ----------------------------------------
 
-Like we've mentioned in the previous step, communication between local memory
-is faster than shared. Instead of relying on it solely at the end of the
-tree-like reduction, it is possible to turn the tree reduction "inside out" and
-perform multiple parallel warp reductions in parallel starting with all threads
-are active, and communicate only their partial results through shared.
+As mentioned in the prior step, communication between local memory is faster 
+than shared. Instead of relying on it solely at the end of the tree-like 
+reduction, it is possible to turn the tree reduction "inside out" and perform
+multiple parallel warp reductions in parallel starting with all threads are
+active, and communicate only their partial results through shared.
 
 IMAGE OF FINAL ALGO
 
