@@ -19,13 +19,13 @@ The algorithm
 Reduction has many names depending on the domain: in functional programming
 it's referred to as
 `fold <https://en.wikipedia.org/wiki/Fold_(higher-order_function)>`_,
-in C++ it's been signidfied by ``std::accumulate`` and as of C++17 ``std::reduce``.
+in C++ it is called ``std::accumulate`` and as of C++17 ``std::reduce``.
 A reduction takes a range of inputs and "reduces" said range with a binary
 operation to a singular/scalar output. Canonically a reduction requires a so
 called "zero" element, which bootstraps the algorithm and serves as one of the
 initial operands to the binary operation. ("Zero" element more generally is
 called `identity or neutral <https://en.wikipedia.org/wiki/Identity_element>`_
-element in group theory, meaning it is an operand which doesn not change the
+element in group theory, meaning it is an operand which does not change the
 result.) Typical use cases would be calculating a sum or wanting to normalize
 a dataset and looking for the maximum value of a dataset. We'll be exploring
 the latter in this tutorial.
@@ -33,8 +33,8 @@ the latter in this tutorial.
 .. figure:: ../data/tutorial/reduction/foldl.svg
   :alt: Diagram demonstrating fold left
 
-There are multiple variations of reduction to allow parallel processing. One
-such is what ``std::reduce`` does, is to require the user-provided binary
+There are multiple variations of reduction to allow parallel processing. The
+approach taken by ``std::reduce`` is to require the user-provided binary
 operator to operate on any combination of identity, and input range elements,
 even exclusively one or the other. This allows inserting any number of
 identities to allow parallel processing and then allows combining the partial
@@ -46,7 +46,7 @@ results of parallel execution.
 Reduction on GPUs
 =================
 
-Implementing reductions on GPUs will require a basic understanding of the
+Implementing reductions on GPUs requires a basic understanding of the
 :doc:`/understand/programming_model_reference`. The article explores aspects of low-level
 optimization best discussed through the {ref}`inherent_thread_model`, and as
 such will refrain from using Cooperative Groups.
