@@ -255,7 +255,8 @@ threads form continous ranges but their memory accesses too.
 		__syncthreads();
 	}
 
-![Diagram demonstrating bank conflict free reduction](../data/tutorial/reduction/conflict_free_reduction.svg)
+.. figure:: ../data/tutorial/reduction/conflict_free_reduction.svg
+  :alt: Diagram demonstrating bank conflict free reduction
 
 .. note::
 
@@ -642,7 +643,11 @@ reduction, it is possible to turn the tree reduction "inside out" and perform
 multiple parallel warp reductions in parallel starting with all threads are
 active, and communicate only their partial results through shared.
 
-IMAGE OF FINAL ALGO
+.. figure:: ../data/tutorial/reduction/warp_reduction.svg
+  :alt: Diagram demonstrating warp reduction
+
+.. figure:: ../data/tutorial/reduction/warp_reduction_with_shared.svg
+  :alt: Diagram demonstrating warp reduction and results store in shared memory
 
 This version of the kernel differs significantly enough to not describe through
 a diff but afresh.
@@ -711,11 +716,12 @@ reading ``zero_elem`` -ents. Reading from global remains unchanged.
 			// Warp reduction
 			tmp::static_for<WarpSize / 2, tmp::not_equal<0>, tmp::divide<2>>([&]<int Delta>()
 			{
-				res = op(res, __shfl_down(res, Delta)); });
+				res = op(res, __shfl_down(res, Delta));
+			});
 
-				// Write warp result from local to shared
-				if(lid == 0)
-					shared[wid] = res;
+			// Write warp result from local to shared
+			if(lid == 0)
+				shared[wid] = res;
 		}
 		__syncthreads();
 
