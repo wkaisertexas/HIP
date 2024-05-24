@@ -1,3 +1,7 @@
+.. meta::
+  :description: The reduction tutorial on HIP
+  :keywords: AMD, ROCm, HIP, reduction, tutorial
+
 *************************************************************
 Tutorial: Reduction
 *************************************************************

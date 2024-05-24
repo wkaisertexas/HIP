@@ -1,3 +1,7 @@
+.. meta::
+  :description: The SAXPY tutorial on HIP
+  :keywords: AMD, ROCm, HIP, SAXPY, tutorial
+
 *******************************************************************************
 Tutorial: SAXPY - Hello, HIP
 *******************************************************************************
