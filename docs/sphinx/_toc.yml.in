@@ -51,6 +51,7 @@ subtrees:
     title: HIP examples
   - url: https://github.com/ROCm/hip-tests/tree/develop/samples
     title: HIP test samples
+  - file: tutorials/cooperative_groups_tutorial
 
 - caption: About
   entries:

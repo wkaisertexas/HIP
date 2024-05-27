@@ -50,6 +50,7 @@ portable applications for AMD and NVIDIA GPUs from single source code.
 
 * [HIP examples](https://github.com/ROCm/HIP-Examples)
 * [HIP test samples](https://github.com/ROCm/hip-tests/tree/develop/samples)
+* [Cooperative groups tutorial](./tutorials/cooperative_groups_tutorial)
 
 :::
 

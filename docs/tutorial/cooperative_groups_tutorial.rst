@@ -1,0 +1,570 @@
+.. meta::
+  :description: The tutorial of cooperative groups in HIP
+  :keywords: AMD, ROCm, HIP, cooperative groups, tutorial
+
+*******************************************************************************
+Tutorial: Cooperative Groups
+*******************************************************************************
+
+This tutorial will show you the basic concepts of the cooperativ groups in HIP
+programming model, the most essential tooling around it and briefly rehash some
+commonalities of heterogenous APIs in general. Mild familiarity with the C/C++
+compilation model and the language is assumed throughout this article.
+
+Prerequisites
+=============
+
+In order to follow this tutorial you will need properly installed drivers and a
+HIP compiler toolchain to compile your code. Because HIP provided by ROCm
+supports compiling and running on Linux and Windows with AMD and NVIDIA GPUs
+alike, the combination of install instructions are more then worth covering as
+part of this tutorial. Please refer to :doc:`/install/install` on how to
+install HIP development packages.
+
+Simple HIP Code
+===============
+
+.. TODO: Add link here
+
+The Heterogenous programming tutorial and the first HIP code is part of the
+SAXPY tutorial.
+
+Compiling on the Command-Line
+=============================
+
+.. _setting_up_the_command-line:
+
+Setting Up the Command-Line
+---------------------------
+
+While strictly speaking there's no such thing as "setting up the command-line
+for compilation" on Linux, just to make invocations more terse let's do it on
+both Linux and Windows.
+
+.. tab-set::
+  .. tab-item:: Linux & AMD
+    :sync: linux-amd
+
+    While distro maintainers may package ROCm such that they install to
+    system-default locations, AMD's installation don't and need to be added to the
+    Path by the user.
+
+    .. code-block:: bash
+      
+      export PATH=/opt/rocm/bin:${PATH}
+    You should be able to call the compiler on the command-line now:
+
+    .. code-block:: bash
+      
+      amdclang++ --version
+    .. note::
+
+      Docker images distributed by AMD, such as
+      `rocm-terminal <https://hub.docker.com/r/rocm/rocm-terminal/>`_ already have
+      `/opt/rocm/bin` on the Path for convenience. (This subtly affects CMake package
+      detection logic of ROCm libraries.)
+
+  .. tab-item:: Linux & NVIDIA
+    :sync: linux-nvidia
+
+    Both distro maintainers and NVIDIA package CUDA as such that ``nvcc`` and related
+    tools are on the command-line by default. You should be able to call the
+    compiler on the command-line simply:
+
+    .. code-block:: bash
+      
+      nvcc --version
+  .. tab-item:: Windows & AMD
+    :sync: windows-amd
+
+    Windows compilers and command-line tooling have traditionally
+    relied on extra environmental variables and Path entries to function correctly.
+    Visual Studio refers to command-lines with these setup as "Developer
+    Command Prompt" or "Developer PowerShell" for ``cmd.exe`` and PowerShell
+    respectively.
+
+    The HIP SDK on Windows doesn't ship a complete toolchain, you will also need:
+
+    - the Windows SDK, most crucially providing the import libs to crucial system
+      libraries all executables must link to and some auxiliary compiler tooling.
+    - a Standard Template Library, aka. STL, which HIP too relies on.
+
+    The prior may be installed separately, though it's most conveniently obtained
+    through the Visual Studio installer, while the latter is part of the Microsoft
+    Visual C++ compiler, aka. MSVC, also installed via Visual Studio.
+
+    If you don't already have some SKU of Visual Studio 2022 installed, for a
+    minimal command-line experience, install the
+    `Build Tools for Visual Studio 2022 <https://aka.ms/vs/17/release/vs_BuildTools.exe>`_
+    with the Desktop Developemnt Workload and under Individual Components select:
+
+    - some version of the Windows SDK
+    - "MSVC v143 - VS 2022 C++ x64/x86 build tools (Latest)"
+    - "C++ CMake tools for Windows" (optional)
+
+    .. note::
+
+      The "C++ CMake tools for Windows" individual component is a convenience which
+      puts both ``cmake.exe`` and ``ninja.exe`` onto the ``PATH`` inside developer
+      command-prompts. You can install these manually, but then you need to manage
+      them manually.
+
+    Visual Studio installations as of VS 2017 are detectable as COM object
+    instances via WMI. To setup a command-line from any shell for the latest
+    Visual Studio's default (latest) Visual C++ toolset issue:
+
+    .. code-block:: powershell
+      $InstallationPath = Get-CimInstance MSFT_VSInstance | Sort-Object -Property Version -Descending | Select-Object -First 1 -ExpandProperty InstallLocation
+      Import-Module $InstallationPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll
+      Enter-VsDevShell -InstallPath $InstallationPath -SkipAutomaticLocation -Arch amd64 -HostArch amd64 -DevCmdArguments '-no_logo'
+      $env:PATH = "${env:HIP_PATH}bin;${env:PATH}"
+    You should be able to call the compiler on the command-line now:
+
+    .. code-block:: powershell
+      clang++ --version
+  .. tab-item:: Windows & NVIDIA
+    :sync: windows-nvidia
+
+    Windows compilers and command-line tooling have traditionally
+    relied on extra environmental variables and Path entries to function correctly.
+    Visual Studio refers to command-lines with these setup as "Developer
+    Command Prompt" or "Developer PowerShell" for ``cmd.exe`` and PowerShell
+    respectively.
+
+    The HIP and CUDA SDKs on Windows doesn't ship complete toolchains, you will
+    also need:
+
+    - the Windows SDK, most crucially providing the import libs to crucial system
+      libraries all executables must link to and some auxiliary compiler tooling.
+    - a Standard Template Library, aka. STL, which HIP too relies on.
+
+    The prior may be installed separately, though it's most conveniently obtained
+    through the Visual Studio installer, while the latter is part of the Microsoft
+    Visual C++ compiler, aka. MSVC, also installed via Visual Studio.
+
+    If you don't already have some SKU of Visual Studio 2022 installed, for a
+    minimal command-line experience, install the
+    `Build Tools for Visual Studio 2022 <https://aka.ms/vs/17/release/vs_BuildTools.exe>`_
+    with the Desktop Developemnt Workload and under Individual Components select:
+
+    - some version of the Windows SDK
+    - "MSVC v143 - VS 2022 C++ x64/x86 build tools (Latest)"
+    - "C++ CMake tools for Windows" (optional)
+
+    .. note::
+
+      The "C++ CMake tools for Windows" individual component is a convenience which
+      puts both ``cmake.exe`` and ``ninja.exe`` onto the ``PATH`` inside developer
+      command-prompts. You can install these manually, but then you need to manage
+      them manually.
+
+    Visual Studio installations as of VS 2017 are detectable as COM object
+    instances via WMI. To setup a command-line from any shell for the latest
+    Visual Studio's default (latest) Visual C++ toolset issue:
+
+    .. code-block:: powershell
+      $InstallationPath = Get-CimInstance MSFT_VSInstance | Sort-Object -Property Version -Descending | Select-Object -First 1 -ExpandProperty InstallLocation
+      Import-Module $InstallationPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll
+      Enter-VsDevShell -InstallPath $InstallationPath -SkipAutomaticLocation -Arch amd64 -HostArch amd64 -DevCmdArguments '-no_logo'
+    You should be able to call the compiler on the command-line now:
+
+    .. code-block:: powershell
+      
+      nvcc --version
+      
+Invoking the Compiler Manually
+------------------------------
+
+To compile and link a single-file application, one may use the following
+command:
+
+.. tab-set::
+  .. tab-item:: Linux & AMD
+    :sync: linux-amd
+
+    .. code-block:: bash
+      amdclang++ ./HIP-Basic/saxpy/main.hip -o saxpy -I ./Common -lamdhip64 -L /opt/rocm/lib -O2
+  .. tab-item:: Linux & NVIDIA
+    :sync: linux-nvidia
+
+    .. code-block:: bash
+      nvcc ./HIP-Basic/saxpy/main.hip -o saxpy -I ./Common -I /opt/rocm/include -O2 -x cu
+  .. tab-item:: Windows & AMD
+    :sync: windows-amd
+
+    .. code-block:: powershell
+      clang++ .\HIP-Basic\saxpy\main.hip -o saxpy.exe -I .\Common -lamdhip64 -L ${env:HIP_PATH}lib -O2
+  .. tab-item:: Windows & NVIDIA
+    :sync: windows-nvidia
+
+    .. code-block:: powershell
+      nvcc .\HIP-Basic\saxpy\main.hip -o saxpy.exe -I ${env:HIP_PATH}include -I .\Common -O2 -x cu
+Depending on your computer, the resulting binary may or may not run. If not, it
+will typically complain about about "Invalid device function". That error
+(corresponding to the ``hipErrorInvalidDeviceFunction`` entry of ``hipError_t``)
+means that the runtime could not find a device program binary of the
+appropriate flavor embedded into the executable.
+
+So far we've only talked about how our data makes it from the host to the
+device and back. We've also seen our device code as source, but the HIP runtime
+was arguing about not finding the right binary to dispatch for execution. How
+can one find out what device binary flavors are embedded into the executable?
+
+.. tab-set::
+  .. tab-item:: Linux & AMD
+    :sync: linux-amd
+
+    The set of ``roc-*`` utilities shipping with ROCm help significantly to inspect
+    binary artifacts on disk. If you wish to use these utilities, add the ROCmCC
+    installation folder to your PATH (the utilities expect them to be on the PATH).
+
+    Lisitng of the embedded program binaries can be done using ``roc-obj-ls``
+
+    .. code-block:: bash
+      roc-obj-ls ./saxpy
+    It may return something like:
+
+    .. code-block:: shell
+      1       host-x86_64-unknown-linux         file://./saxpy#offset=12288&size=0
+      1       hipv4-amdgcn-amd-amdhsa--gfx803   file://./saxpy#offset=12288&size=9760
+    We can see that the compiler embedded a version 4 code object (more on `code
+    object versions <https://www.llvm.org/docs/AMDGPUUsage.html#code-object-metadata>`_)
+    and used the LLVM target triple `amdgcn-amd-amdhsa--gfx803` (more on `target triples
+    <https://www.llvm.org/docs/AMDGPUUsage.html#target-triples>`_). We can
+    extract that program object in a disassembled fashion for human consumption via
+    `roc-obj`
+
+    .. code-block:: bash
+      roc-obj -t gfx803 -d ./saxpy
+    Which will create two files on disk and we'll be interested in the one with the
+    ``.s`` extension. Opening up said file or dumping it to the console using ``cat``
+    one will find the disassembled binary of our saxpy compute kernel, something
+    similar to:
+
+    .. code-block::
+      Disassembly of section .text:
+      <_Z12saxpy_kernelfPKfPfj>:
+          s_load_dword s0, s[4:5], 0x2c        // 000000001000: C0020002 0000002C
+          s_load_dword s1, s[4:5], 0x18        // 000000001008: C0020042 00000018
+          s_waitcnt lgkmcnt(0)                 // 000000001010: BF8C007F
+          s_and_b32 s0, s0, 0xffff             // 000000001014: 8600FF00 0000FFFF
+          s_mul_i32 s6, s6, s0                 // 00000000101C: 92060006
+          v_add_u32_e32 v0, vcc, s6, v0        // 000000001020: 32000006
+          v_cmp_gt_u32_e32 vcc, s1, v0         // 000000001024: 7D980001
+          s_and_saveexec_b64 s[0:1], vcc       // 000000001028: BE80206A
+          s_cbranch_execz 22                   // 00000000102C: BF880016 <_Z12saxpy_kernelfPKfPfj+0x88>
+          s_load_dwordx4 s[0:3], s[4:5], 0x8   // 000000001030: C00A0002 00000008
+          v_mov_b32_e32 v1, 0                  // 000000001038: 7E020280
+          v_lshlrev_b64 v[0:1], 2, v[0:1]      // 00000000103C: D28F0000 00020082
+          s_waitcnt lgkmcnt(0)                 // 000000001044: BF8C007F
+          v_mov_b32_e32 v3, s1                 // 000000001048: 7E060201
+          v_add_u32_e32 v2, vcc, s0, v0        // 00000000104C: 32040000
+          v_addc_u32_e32 v3, vcc, v3, v1, vcc  // 000000001050: 38060303
+          flat_load_dword v2, v[2:3]           // 000000001054: DC500000 02000002
+          v_mov_b32_e32 v3, s3                 // 00000000105C: 7E060203
+          v_add_u32_e32 v0, vcc, s2, v0        // 000000001060: 32000002
+          v_addc_u32_e32 v1, vcc, v3, v1, vcc  // 000000001064: 38020303
+          flat_load_dword v3, v[0:1]           // 000000001068: DC500000 03000000
+          s_load_dword s0, s[4:5], 0x0         // 000000001070: C0020002 00000000
+          s_waitcnt vmcnt(0) lgkmcnt(0)        // 000000001078: BF8C0070
+          v_mac_f32_e32 v3, s0, v2             // 00000000107C: 2C060400
+          flat_store_dword v[0:1], v3          // 000000001080: DC700000 00000300
+          s_endpgm                             // 000000001088: BF810000
+    Alternatively we can call the compiler with ``--save-temps`` to dump all device
+    binary to disk in separate files.
+
+    .. code-block:: bash
+      amdclang++ ./HIP-Basic/saxpy/main.hip -o saxpy -I ./Common -lamdhip64 -L /opt/rocm/lib -O2 --save-temps
+    Now we can list all the temporaries created while compiling ``main.hip`` via
+
+    .. code-block:: bash
+      ls main-hip-amdgcn-amd-amdhsa-*
+      main-hip-amdgcn-amd-amdhsa-gfx803.bc
+      main-hip-amdgcn-amd-amdhsa-gfx803.cui
+      main-hip-amdgcn-amd-amdhsa-gfx803.o
+      main-hip-amdgcn-amd-amdhsa-gfx803.out
+      main-hip-amdgcn-amd-amdhsa-gfx803.out.resolution.txt
+      main-hip-amdgcn-amd-amdhsa-gfx803.s
+    Files with the ``.s`` extension hold the disassembled contents of the binary and
+    the filename directly informs us of the graphics IPs used by the compiler. The
+    contents of this file is very similar to what ``roc-obj`` printed to the console.
+
+  .. tab-item:: Linux & NVIDIA
+    :sync: linux-nvidia
+
+    Unlike HIP on AMD, when compiling using the NVIDIA support of HIP the resulting
+    binary will be a valid CUDA executable as far as the binary goes. Therefor
+    it'll incorporate PTX ISA (Parallel Thread eXecution Instruction Set
+    Architecture) instead of AMDGPU binary. As s result, tooling shipping with the
+    CUDA SDK can be used to inspect which device ISA got compiled into a specific
+    executable. The tool most useful to us currently is ``cuobjdump``.
+
+    .. code-block:: bash
+      cuobjdump --list-ptx ./saxpy 
+    Which will print something like:
+
+    .. code-block:: 
+      PTX file    1: saxpy.1.sm_52.ptx
+    From this we can see that the saxpy kernel is stored as ``sm_52``, which shows
+    that a compute capability 5.2 ISA got embedded into the executable, so devices
+    which sport compute capability 5.2 or newer will be able to run this code.
+
+  .. tab-item:: Windows & AMD
+    :sync: windows-amd
+
+    The HIP SDK for Windows don't yet sport the ``roc-*`` set of utilities to work
+    with binary artifacts. To find out what binary formats are embedded into an
+    executable, one may use ``dumpbin`` tool from the Windows SDK to obtain the
+    raw data of the ``.hip_fat`` section of an executable. (This binary payload is
+    what gets parsed by the ``roc-*`` set of utilities on Linux.) Skipping over the
+    reported header, the rendered raw data as ASCII has ~3 lines per entries.
+    Depending on how many binaries are embedded, you may need to alter the number
+    of rendered lines. An invocation such as:
+
+    .. code-block:: powershell
+      dumpbin.exe /nologo /section:.hip_fat /rawdata:8 .\saxpy.exe | select -Skip 20 -First 12
+    The output may look like:
+
+    .. code-block:: 
+      000000014004C000: 5F474E414C435F5F 5F44414F4C46464F   __CLANG_OFFLOAD_
+      000000014004C010: 5F5F454C444E5542 0000000000000002   BUNDLE__........
+      000000014004C020: 0000000000001000 0000000000000000   ................
+      000000014004C030: 0000000000000019 3638782D74736F68   ........host-x86
+      000000014004C040: 6E6B6E752D34365F 756E696C2D6E776F   _64-unknown-linu
+      000000014004C050: 0000000000100078 00000000000D9800   x...............
+      000000014004C060: 0000000000001F00 612D347670696800   .........hipv4-a
+      000000014004C070: 6D612D6E6367646D 617368646D612D64   mdgcn-amd-amdhsa
+      000000014004C080: 3630397866672D2D 0000000000000000   --gfx906........
+      000000014004C090: 0000000000000000 0000000000000000   ................
+      000000014004C0A0: 0000000000000000 0000000000000000   ................
+      000000014004C0B0: 0000000000000000 0000000000000000   ................
+    We can see that the compiler embedded a version 4 code object (more on code
+    `object versions <https://www.llvm.org/docs/AMDGPUUsage.html#code-object-metadata>`_) and
+    used the LLVM target triple `amdgcn-amd-amdhsa--gfx906` (more on `target triples 
+    <https://www.llvm.org/docs/AMDGPUUsage.html#target-triples>`_). Don't be
+    alarmed about linux showing up as a binary format, AMDGPU binaries uploaded to
+    the GPU for execution are proper linux ELF binaries in their format.
+
+    Alternatively we can call the compiler with ``--save-temps`` to dump all device
+    binary to disk in separate files.
+
+    .. code-block:: powershell
+      clang++ .\HIP-Basic\saxpy\main.hip -o saxpy.exe -I .\Common -lamdhip64 -L ${env:HIP_PATH}lib -O2 --save-temps
+    Now we can list all the temporaries created while compiling ``main.hip`` via
+
+    .. code-block:: powershell
+      Get-ChildItem -Filter main-hip-* | select -Property Name
+      Name
+      ----
+      main-hip-amdgcn-amd-amdhsa-gfx906.bc
+      main-hip-amdgcn-amd-amdhsa-gfx906.hipi
+      main-hip-amdgcn-amd-amdhsa-gfx906.o
+      main-hip-amdgcn-amd-amdhsa-gfx906.out
+      main-hip-amdgcn-amd-amdhsa-gfx906.out.resolution.txt
+      main-hip-amdgcn-amd-amdhsa-gfx906.s
+    Files with the ``.s`` extension hold the disassembled contents of the binary and
+    the filename directly informs us of the graphics IPs used by the compiler.
+
+    .. code-block:: powershell
+      Get-ChildItem main-hip-*.s | Get-Content
+              .text
+              .amdgcn_target "amdgcn-amd-amdhsa--gfx906"
+              .protected      _Z12saxpy_kernelfPKfPfj ; -- Begin function _Z12saxpy_kernelfPKfPfj
+              .globl  _Z12saxpy_kernelfPKfPfj
+              .p2align        8
+              .type   _Z12saxpy_kernelfPKfPfj,@function
+      _Z12saxpy_kernelfPKfPfj:                ; @_Z12saxpy_kernelfPKfPfj
+      ; %bb.0:
+              s_load_dword s0, s[4:5], 0x4
+              s_load_dword s1, s[6:7], 0x18
+              s_waitcnt lgkmcnt(0)
+              s_and_b32 s0, s0, 0xffff
+              s_mul_i32 s8, s8, s0
+              v_add_u32_e32 v0, s8, v0
+              v_cmp_gt_u32_e32 vcc, s1, v0
+              s_and_saveexec_b64 s[0:1], vcc
+              s_cbranch_execz .LBB0_2
+      ; %bb.1:
+              s_load_dwordx4 s[0:3], s[6:7], 0x8
+              v_mov_b32_e32 v1, 0
+              v_lshlrev_b64 v[0:1], 2, v[0:1]
+              s_waitcnt lgkmcnt(0)
+              v_mov_b32_e32 v3, s1
+              v_add_co_u32_e32 v2, vcc, s0, v0
+              v_addc_co_u32_e32 v3, vcc, v3, v1, vcc
+              global_load_dword v2, v[2:3], off
+              v_mov_b32_e32 v3, s3
+              v_add_co_u32_e32 v0, vcc, s2, v0
+              v_addc_co_u32_e32 v1, vcc, v3, v1, vcc
+              global_load_dword v3, v[0:1], off
+              s_load_dword s0, s[6:7], 0x0
+              s_waitcnt vmcnt(0) lgkmcnt(0)
+              v_fmac_f32_e32 v3, s0, v2
+              global_store_dword v[0:1], v3, off
+      .LBB0_2:
+              s_endpgm
+              ...
+  .. tab-item:: Windows & NVIDIA
+    :sync: windows-nvidia
+
+    Unlike HIP on AMD, when compiling using the NVIDIA support of HIP the resulting
+    binary will be a valid CUDA executable as far as the binary goes. Therefor
+    it'll incorporate PTX ISA (Parallel Thread eXecution Instruction Set
+    Architecture) instead of AMDGPU binary. As s result, tooling shipping with the
+    CUDA SDK can be used to inspect which device ISA got compiled into a specific
+    executable. The tool most useful to us currently is ``cuobjdump``.
+
+    .. code-block:: bash
+      cuobjdump.exe --list-ptx .\saxpy.exe
+    Which will print something like:
+
+    .. code-block:: 
+      PTX file    1: saxpy.1.sm_52.ptx
+    From this we can see that the saxpy kernel is stored as ``sm_52``, which shows
+    that a compute capability 5.2 ISA got embedded into the executable, so devices
+    which sport compute capability 5.2 or newer will be able to run this code.
+
+Now that we've found what binary got embedded into the executable, we only need
+to find which format our available devices use.
+
+.. tab-set::
+  .. tab-item:: Linux & AMD
+    :sync: linux-amd
+
+    On Linux a utility called ``rocminfo`` can help us list all the properties of the
+    devices available on the system, including which version of graphics IP
+    (``gfxXYZ``) they employ. We'll filter the output to have only these lines:
+
+    .. code-block:: bash
+      /opt/rocm/bin/rocminfo | grep gfx
+        Name:                    gfx906
+            Name:                    amdgcn-amd-amdhsa--gfx906:sramecc+:xnack-
+    _(For the time being let's not discuss what the colon-dlimited list of device
+    features are after the graphics IP. Until further notice we'll treat them as
+    part of the binary version.)_
+
+  .. tab-item:: Linux & NVIDIA
+    :sync: linux-nvidia
+
+    On Linux HIP with the NVIDIA back-end a CUDA SDK sample called ``deviceQuery``
+    can help us list all the properties of the devices available on the system,
+    including which version of compute capability a device sports.
+    (``<major>.<minor>`` compute capability is passed to ``nvcc`` on the
+    command-line as ``sm_<major><minor>``, for eg. ``8.6`` is ``sm_86``.)
+
+    Because it's not shipped as a binary, we may as well compile the matching
+    example from ROCm.
+
+    .. code-block:: bash
+      nvcc ./HIP-Basic/device_query/main.cpp -o device_query -I ./Common -I /opt/rocm/include -O2
+    We'll filter the output to have only the lines of interest, for eg.:
+
+    .. code-block:: bash
+      ./device_query | grep "major.minor"
+      major.minor:              8.6
+      major.minor:              7.0
+    .. note::
+
+      Next to the ``nvcc`` executable is another tool called ``__nvcc_device_query``
+      which simply prints the SM Architecture numbers to standard out as a comma
+      separated list of numbers. The naming of this utility suggests it's not a user
+      facing executable but is used by ``nvcc`` to determine what devices are in the
+      system at hand.
+
+  .. tab-item:: Windows & AMD
+    :sync: windows-amd
+
+    On Windows a utility called ``hipInfo.exe`` can help us list all the properties
+    of the devices available on the system, including which version of graphics IP
+    (``gfxXYZ``) they employ. We'll filter the output to have only these lines:
+
+    .. code-block:: powershell
+      & ${env:HIP_PATH}bin\hipInfo.exe | Select-String gfx
+      gcnArchName:                      gfx1032
+      gcnArchName:                      gfx1035
+  .. tab-item:: Winodws & NVIDIA
+    :sync: windows-nvidia
+
+    On Windows HIP with the NVIDIA back-end a CUDA SDK sample called ``deviceQuery``
+    can help us list all the properties of the devices available on the system,
+    including which version of compute capability a device sports.
+    (``<major>.<minor>`` compute capability is passed to ``nvcc`` on the
+    command-line as ``sm_<major><minor>``, for eg. ``8.6`` is ``sm_86``.)
+
+    Because it's not shipped as a binary, we may as well compile the matching
+    example from ROCm.
+
+    .. code-block:: powershell
+      nvcc .\HIP-Basic\device_query\main.cpp -o device_query.exe -I .\Common -I ${env:HIP_PATH}include -O2
+    We'll filter the output to have only the lines of interest, for eg.:
+
+    .. code-block:: powershell
+      .\device_query.exe | Select-String "major.minor"
+      major.minor:              8.6
+      major.minor:              7.0
+    .. note::
+
+      Next to the ``nvcc`` executable is another tool called ``__nvcc_device_query.exe``
+      which simply prints the SM Architecture numbers to standard out as a comma
+      separated list of numbers. The naming of this utility suggests it's not a user
+      facing executable but is used by ``nvcc`` to determine what devices are in the
+      system at hand.
+
+Now that we know which versions of graphics IP our devices use, we can
+recompile our program with said parameters.
+
+.. tab-set::
+  .. tab-item:: Linux & AMD
+    :sync: linux-amd
+
+    .. code-block:: bash
+      amdclang++ ./HIP-Basic/saxpy/main.hip -o saxpy -I ./Common -lamdhip64 -L /opt/rocm/lib -O2 --offload-arch=gfx906:sramecc+:xnack-
+    Now our sample will surely run.
+
+    .. code-block:: 
+      ./saxpy
+      Calculating y[i] = a * x[i] + y[i] over 1000000 elements.
+      First 10 elements of the results: [ 3, 5, 7, 9, 11, 13, 15, 17, 19, 21 ]
+  .. tab-item:: Linux & NVIDIA
+    :sync: linux-nvidia
+
+    .. code-block:: bash
+      nvcc ./HIP-Basic/saxpy/main.hip -o saxpy -I ./Common -I /opt/rocm/include -O2 -x cu -arch=sm_70,sm_86
+    .. note::
+
+      If you want to portably target the development machine which is compiling, you
+      may specify ``-arch=native`` instead.
+
+    Now our sample will surely run.
+
+    .. code-block:: 
+      ./saxpy
+      Calculating y[i] = a * x[i] + y[i] over 1000000 elements.
+      First 10 elements of the results: [ 3, 5, 7, 9, 11, 13, 15, 17, 19, 21 ]
+  .. tab-item:: Windows & AMD
+    :sync: windows-amd
+
+    .. code-block:: powershell
+      clang++ .\HIP-Basic\saxpy\main.hip -o saxpy.exe -I .\Common -lamdhip64 -L ${env:HIP_PATH}lib -O2 --offload-arch=gfx1032 --offload-arch=gfx1035
+    Now our sample will surely run.
+
+    .. code-block::
+      .\saxpy.exe
+      Calculating y[i] = a * x[i] + y[i] over 1000000 elements.
+      First 10 elements of the results: [ 3, 5, 7, 9, 11, 13, 15, 17, 19, 21 ]
+  .. tab-item:: Windows & NVIDIA
+    :sync: windows-nvidia
+
+    .. code-block:: powershell
+      nvcc .\HIP-Basic\saxpy\main.hip -o saxpy.exe -I ${env:HIP_PATH}include -I .\Common -O2 -x cu -arch=sm_70,sm_86
+    .. note::
+
+      If you want to portably target the development machine which is compiling, you
+      may specify ``-arch=native`` instead.
+
+    Now our sample will surely run.
+
+    .. code-block:: 
+      .\saxpy.exe
+      Calculating y[i] = a * x[i] + y[i] over 1000000 elements.
+      First 10 elements of the results: [ 3, 5, 7, 9, 11, 13, 15, 17, 19, 21 ]
