@@ -89,9 +89,9 @@ may be destroyed.
     std::size_t factor = block_size; // block_size from hipGetDeviceProperties()
     auto new_size = [factor](const std::size_t actual)
     {
-    	// Every pass reduces input length by 'factor'. If actual size is not divisible by factor,
-    	// an extra output element is produced using some number of zero_elem inputs.
-    	return actual / factor + (actual % factor == 0 ? 0 : 1);
+        // Every pass reduces input length by 'factor'. If actual size is not divisible by factor,
+        // an extra output element is produced using some number of zero_elem inputs.
+        return actual / factor + (actual % factor == 0 ? 0 : 1);
     };
 
 We'll be feeding ``zero_elem`` instances to threads that don't have unique inputs
@@ -99,17 +99,17 @@ of their own. The backing of double-buffering is allocated is such:
 
 .. code-block:: C++
 
-	// Initialize host-side storage
-	std::vector<unsigned> input(input_count);
-	std::iota(input.begin(), input.end(), 0);
+    // Initialize host-side storage
+    std::vector<unsigned> input(input_count);
+    std::iota(input.begin(), input.end(), 0);
 
-	// Initialize device-side storage
-	unsigned *front,
-			 *back;
-	hipMalloc((void**)&front, sizeof(unsigned) * input_count);
-	hipMalloc((void**)&back,  sizeof(unsigned) * new_size(input_count));
+    // Initialize device-side storage
+    unsigned *front,
+             *back;
+    hipMalloc((void**)&front, sizeof(unsigned) * input_count);
+    hipMalloc((void**)&back,  sizeof(unsigned) * new_size(input_count));
 
-	hipMemcpy(front, input.data(), input.size() * sizeof(unsigned), hipMemcpyHostToDevice);
+    hipMemcpy(front, input.data(), input.size() * sizeof(unsigned), hipMemcpyHostToDevice);
 
 Data is initialized on host and dispatched to the device. Then device-side
 reduction may commence. We omit swapping the double-buffer on the last
@@ -117,24 +117,24 @@ iteration so the result is in the back-buffer no matter the input size.
 
 .. code-block:: C++
 
-	for (uint32_t curr = input_count; curr > 1;)
-	{
-		hipLaunchKernelGGL(
-			kernel,
-			dim3(new_size(curr)),
-			dim3(block_size),
-			factor * sizeof(unsigned),
-			hipStreamDefault,
-			front,
-			back,
-			kernel_op,
-			zero_elem,
-			curr);
+    for (uint32_t curr = input_count; curr > 1;)
+    {
+        hipLaunchKernelGGL(
+            kernel,
+            dim3(new_size(curr)),
+            dim3(block_size),
+            factor * sizeof(unsigned),
+            hipStreamDefault,
+            front,
+            back,
+            kernel_op,
+            zero_elem,
+            curr);
 
-		curr = new_size(curr);
-		if (curr > 1)
-			std::swap(front, back);
-	}
+        curr = new_size(curr);
+        if (curr > 1)
+            std::swap(front, back);
+    }
 
 
 This structure will persist throughout all the variations of reduction with
@@ -143,42 +143,42 @@ the kernel itself:
 
 .. code-block:: C++
 
-	template<typename T, typename F>
-	__global__ void kernel(
-		T* front,
-		T* back,
-		F op,
-		T zero_elem,
-		uint32_t front_size)
-	{
-		extern __shared__ T shared[];
+    template<typename T, typename F>
+    __global__ void kernel(
+        T* front,
+        T* back,
+        F op,
+        T zero_elem,
+        uint32_t front_size)
+    {
+        extern __shared__ T shared[];
 
-		// Overindex-safe read of input
-		auto read_global_safe = [&](const uint32_t i)
-		{
-			return i < front_size ? front[i] : zero_elem;
-		};
+        // Overindex-safe read of input
+        auto read_global_safe = [&](const uint32_t i)
+        {
+            return i < front_size ? front[i] : zero_elem;
+        };
 
-		const uint32_t tid = threadIdx.x,
-					bid = blockIdx.x,
-					gid = bid * blockDim.x + tid;
+        const uint32_t tid = threadIdx.x,
+                    bid = blockIdx.x,
+                    gid = bid * blockDim.x + tid;
 
-		// Read input from front buffer to shared
-		shared[tid] = read_global_safe(gid);
-		__syncthreads();
+        // Read input from front buffer to shared
+        shared[tid] = read_global_safe(gid);
+        __syncthreads();
 
-		// Shared reduction
-		for (uint32_t i = 1; i < blockDim.x; i *= 2)
-		{
-			if (tid % (2 * i) == 0)
-				shared[tid] = op(shared[tid], shared[tid + i]);
-			__syncthreads();
-		}
+        // Shared reduction
+        for (uint32_t i = 1; i < blockDim.x; i *= 2)
+        {
+            if (tid % (2 * i) == 0)
+                shared[tid] = op(shared[tid], shared[tid + i]);
+            __syncthreads();
+        }
 
-		// Write result from shared to back buffer
-		if (tid == 0)
-			back[bid] = shared[0];
-	}
+        // Write result from shared to back buffer
+        if (tid == 0)
+            back[bid] = shared[0];
+    }
 
 While the ``tid % (2 * i) == 0`` indexing scheme yields correct results, it will
 also result in high thread divergence. Thread divergence is when threads in a
@@ -200,21 +200,21 @@ identical but reassigning the thread ids.
 
 .. note::
 
-	For those less proficient in reading Git diffs, the following code segments show
-	changes between versions of a file. Lines highlighted in red are removed or
-	changed while lines highlighted green are being introduced.
+    For those less proficient in reading Git diffs, the following code segments show
+    changes between versions of a file. Lines highlighted in red are removed or
+    changed while lines highlighted green are being introduced.
 
 .. code-block:: diff
 
-	// Shared reduction
-	for (uint32_t i = 1; i < blockDim.x; i *= 2)
-	{
-	-	if (tid % (2 * i) == 0)
-	-		shared[tid] = op(shared[tid], shared[tid + i]);
-	+	if (uint32_t j = 2 * i * tid; j < blockDim.x)
-	+		shared[j] = op(shared[j], shared[j + i]);
-		__syncthreads();
-	}
+    // Shared reduction
+    for (uint32_t i = 1; i < blockDim.x; i *= 2)
+    {
+    -    if (tid % (2 * i) == 0)
+    -        shared[tid] = op(shared[tid], shared[tid + i]);
+    +    if (uint32_t j = 2 * i * tid; j < blockDim.x)
+    +        shared[j] = op(shared[j], shared[j + i]);
+        __syncthreads();
+    }
 
 This way inactive threads start accumulating uniformly toward the higher thread
 id index range and may uniformly skip to ``__syncthreads()``. This however
@@ -244,31 +244,31 @@ accesses".
 A notable exception is when the shared read uniformly evaluates to the same
 address across the entire warp/wavefront turning it into a broadcast. A
 better change naive implementation is to have not only the activity of
-threads form continous ranges but their memory accesses too.
+threads form continuous ranges but their memory accesses too.
 
 .. code-block:: diff
 
-	// Shared reduction
-	-for (uint32_t i = 1; i < blockDim.x; i *= 2)
-	-{
-	-	if (tid % (2 * i) == 0)
-	+for (uint32_t i = blockDim.x / 2; i != 0; i /= 2)
-	+{
-	+	if (tid < i)
-			shared[tid] = op(shared[tid], shared[tid + i]);
-		__syncthreads();
-	}
+    // Shared reduction
+    -for (uint32_t i = 1; i < blockDim.x; i *= 2)
+    -{
+    -    if (tid % (2 * i) == 0)
+    +for (uint32_t i = blockDim.x / 2; i != 0; i /= 2)
+    +{
+    +    if (tid < i)
+            shared[tid] = op(shared[tid], shared[tid + i]);
+        __syncthreads();
+    }
 
 .. figure:: ../data/tutorial/reduction/conflict_free_reduction.svg
   :alt: Diagram demonstrating bank conflict free reduction
 
 .. note::
 
-	It is easiest to avoid bank conflicts if one can read shared memory in a
-	coalesced manner, meaning reads/writes of each lane in a warp evaluate to
-	consequtive locations. Additional requirements must be met detailed more
-	thoroughly in the linked ISA documents, but having simple read/write patterns
-	help reason about bank conflicts.
+    It is easiest to avoid bank conflicts if one can read shared memory in a
+    coalesced manner, meaning reads/writes of each lane in a warp evaluate to
+    consequtive locations. Additional requirements must be met detailed more
+    thoroughly in the linked ISA documents, but having simple read/write patterns
+    help reason about bank conflicts.
 
 4. Utilize upper half of the block
 ----------------------------------
@@ -281,15 +281,15 @@ helped load the data into shared. We change the kernel:
 
 .. code-block:: diff
 
-	const uint32_t tid = threadIdx.x,
-				bid = blockIdx.x,
-	-              gid = bid * blockDim.x + tid;
-	+              gid = bid * (blockDim.x * 2) + tid;
+    const uint32_t tid = threadIdx.x,
+                bid = blockIdx.x,
+    -              gid = bid * blockDim.x + tid;
+    +              gid = bid * (blockDim.x * 2) + tid;
 
-	// Read input from front buffer to shared
-	-shared[tid] = read_global_safe(gid);
-	+shared[tid] = op(read_global_safe(gid), read_global_safe(gid + blockDim.x));
-	__syncthreads();
+    // Read input from front buffer to shared
+    -shared[tid] = read_global_safe(gid);
+    +shared[tid] = op(read_global_safe(gid), read_global_safe(gid + blockDim.x));
+    __syncthreads();
 
 and the calculation of ``factor`` on the host as well.
 
@@ -323,11 +323,11 @@ Consider the following code:
 
 .. code-block:: C++
 
-	constexpr int size = 4;
-	for (int i = 0 ; i < size ; ++i)
-	{
-		printf("%d", i);
-	}
+    constexpr int size = 4;
+    for (int i = 0 ; i < size ; ++i)
+    {
+        printf("%d", i);
+    }
 
 This compiles to the following binaries:
 
@@ -335,110 +335,110 @@ This compiles to the following binaries:
 
 .. code-block::
 
-	main:
-		push    rbx
-		lea     rbx, [rip + .L.str]
-		mov     rdi, rbx
-		xor     esi, esi
-		xor     eax, eax
-		call    printf@PLT
-		mov     rdi, rbx
-		mov     esi, 1
-		xor     eax, eax
-		call    printf@PLT
-		mov     rdi, rbx
-		mov     esi, 2
-		xor     eax, eax
-		call    printf@PLT
-		mov     rdi, rbx
-		mov     esi, 3
-		xor     eax, eax
-		call    printf@PLT
-		xor     eax, eax
-		pop     rbx
-		ret
-	.L.str:
-		.asciz  "%d"
+    main:
+        push    rbx
+        lea     rbx, [rip + .L.str]
+        mov     rdi, rbx
+        xor     esi, esi
+        xor     eax, eax
+        call    printf@PLT
+        mov     rdi, rbx
+        mov     esi, 1
+        xor     eax, eax
+        call    printf@PLT
+        mov     rdi, rbx
+        mov     esi, 2
+        xor     eax, eax
+        call    printf@PLT
+        mov     rdi, rbx
+        mov     esi, 3
+        xor     eax, eax
+        call    printf@PLT
+        xor     eax, eax
+        pop     rbx
+        ret
+    .L.str:
+        .asciz  "%d"
 
 
 **GCC**
 
 .. code-block:: asm
 
-	.LC0:
-		.string "%d"
-	main:
-		push    rbx
-		xor     ebx, ebx
-	.L2:
-		mov     esi, ebx
-		mov     edi, OFFSET FLAT:.LC0
-		xor     eax, eax
-		add     ebx, 1
-		call    printf
-		cmp     ebx, 4
-		jne     .L2
-		xor     eax, eax
-		pop     rbx
-		ret
+    .LC0:
+        .string "%d"
+    main:
+        push    rbx
+        xor     ebx, ebx
+    .L2:
+        mov     esi, ebx
+        mov     edi, OFFSET FLAT:.LC0
+        xor     eax, eax
+        add     ebx, 1
+        call    printf
+        cmp     ebx, 4
+        jne     .L2
+        xor     eax, eax
+        pop     rbx
+        ret
 
 
 **MSVC**
 
 .. code-block::
 
-	main    PROC
-		$LN12:
-		push    rbx
-		sub     rsp, 32
-		xor     ebx, ebx
-		npad    8
-	$LL4@main:
-		mov     edx, ebx
-		lea     rcx, OFFSET FLAT:'string'
-		call    printf
-		inc     ebx
-		cmp     ebx, 4
-		jl      SHORT $LL4@main
-		xor     eax, eax
-		add     rsp, 32
-		pop     rbx
-		ret     0
-	main    ENDP
+    main    PROC
+        $LN12:
+        push    rbx
+        sub     rsp, 32
+        xor     ebx, ebx
+        npad    8
+    $LL4@main:
+        mov     edx, ebx
+        lea     rcx, OFFSET FLAT:'string'
+        call    printf
+        inc     ebx
+        cmp     ebx, 4
+        jl      SHORT $LL4@main
+        xor     eax, eax
+        add     rsp, 32
+        pop     rbx
+        ret     0
+    main    ENDP
 
 
 LLVM unrolls the the loop and compiles to a flat series of ``printf`` invocations
 while GCC and MSVC both agree to keep the loop intact, visible from the compare
-(``cmp``) and the jump (``jne``, ``jl``) instructions. LLVM codegen is identical to
-us having written the unrolled loop manually:
+(``cmp``) and the jump (``jne``, ``jl``) instructions. LLVM code generation is
+identical to us having written the unrolled loop manually:
 
 .. code-block:: C++
 
-	printf("%d", 0);
-	printf("%d", 1);
-	printf("%d", 2);
-	printf("%d", 3);
+    printf("%d", 0);
+    printf("%d", 1);
+    printf("%d", 2);
+    printf("%d", 3);
 
-While there are various non-standard pragmas availalbe to hint or force the
+While there are various non-standard pragmas available to hint or force the
 compiler to unroll the loop, we instead use template meta-programming to force
 feed the compiler the unrolled loop.
 
 .. code-block:: C++
 
-	constexpr int size = 4;
+    constexpr int size = 4;
 
-	// Maybe unrolled loop
-	for (int i = 0 ; i < size ; ++i)
-	{
-		printf("%d", i);
-	}
+    // Maybe unrolled loop
+    for (int i = 0 ; i < size ; ++i)
+    {
+        printf("%d", i);
+    }
 
-	// Force unrolled loop
-	using namespace tmp;
-	static_for<0, less_than<size>, increment<1>>([]<int i>()
-	{
-		printf("%d", i);
-	});
+    // Force unrolled loop
+    using namespace tmp;
+    static_for<0, less_than<size>, increment<1>>([]<int i>()
+    {
+        printf("%d", i);
+    });
 
 The most notable difference in structure is that in the language ``for`` loop we
 start by giving the loop variable a name, while in our ``static_for`` utility we
@@ -454,58 +454,58 @@ Consider the following code:
 
 .. code-block:: C++
 
-	int warp_size = device_props.warpSize;
-	switch (warp_size)
-	{
-	case 32:
-		hipLaunchKernelGGL(kernel<32>, ...);
-		break;
-	case 64:
-		hipLaunchKernelGGL(kernel<64>, ...);
-		break;
-	}
+    int warp_size = device_props.warpSize;
+    switch (warp_size)
+    {
+    case 32:
+        hipLaunchKernelGGL(kernel<32>, ...);
+        break;
+    case 64:
+        hipLaunchKernelGGL(kernel<64>, ...);
+        break;
+    }
 
 This all works fine as long as one doesn't commit copy-paste errors, as we had
 to repeat the possible values of ``warp_size`` our code is prepared to handle.
 This is what ``tmp::static_switch`` helps us with. The above is morally
-equiavalent to:
+equivalent to:
 
 .. code-block:: C++
 
-	tmp::static_switch<std::array{32, 64}>(warp_size, [&]<int WarpSize>()
-	{
-		hipLaunchKernelGGL(kernel<WarpSize>, ...);
-	});
+    tmp::static_switch<std::array{32, 64}>(warp_size, [&]<int WarpSize>()
+    {
+        hipLaunchKernelGGL(kernel<WarpSize>, ...);
+    });
 
 .. code-block:: diff
 
-	-template<typename T, typename F>
-	+template<uint32_t WarpSize, typename T, typename F>
-	__global__ void kernel(
-		...
-	)
-	{
-		...
-	// Shared reduction
-	-for (uint32_t i = blockDim.x / 2; i != 0; i /= 2)
-	+for (uint32_t i = blockDim.x / 2; i > WarpSize; i /= 2)
-	{
-		if (tid < i)
-			shared[tid] = op(shared[tid], shared[tid + i]);
-		__syncthreads();
-	}
-	+// Warp reduction
-	+tmp::static_for<WarpSize, tmp::not_equal<0>, tmp::divide<2>>([&]<int I>()
-	+{
-	+	if (tid < I)
-	+		shared[tid] = op(shared[tid], shared[tid + I]);
-	+#ifdef __HIP_PLATFORM_NVIDIA__
-	+	__syncwarp(0xffffffff >> (WarpSize - I));
-	+#endif
-	+});
+    -template<typename T, typename F>
+    +template<uint32_t WarpSize, typename T, typename F>
+    __global__ void kernel(
+        ...
+    )
+    {
+        ...
+    // Shared reduction
+    -for (uint32_t i = blockDim.x / 2; i != 0; i /= 2)
+    +for (uint32_t i = blockDim.x / 2; i > WarpSize; i /= 2)
+    {
+        if (tid < i)
+            shared[tid] = op(shared[tid], shared[tid + i]);
+        __syncthreads();
+    }
+    +// Warp reduction
+    +tmp::static_for<WarpSize, tmp::not_equal<0>, tmp::divide<2>>([&]<int I>()
+    +{
+    +    if (tid < I)
+    +        shared[tid] = op(shared[tid], shared[tid + I]);
+    +#ifdef __HIP_PLATFORM_NVIDIA__
+    +    __syncwarp(0xffffffff >> (WarpSize - I));
+    +#endif
+    +});
 
 Because HIP typically targets hardware with warp sizes of 32 (NVIDIA GPUs and
-RDNA AMD GPUs) as well as of 64 (CNDA AMD GPUs), portable HIP code must handle
+RDNA AMD GPUs) as well as of 64 (CDNA AMD GPUs), portable HIP code must handle
 both. That is why instead of assuming a warp size of 32 we make that a template
 argument of the kernel, allowing us to unroll the final loop using
 ``tmp::static_for`` in a parametric way but still having the code read much like
@@ -518,42 +518,42 @@ run-time ``warp_size`` variable to a camel-case compile-time constant ``WarpSize
 
 .. code-block:: diff
 
-	// Device-side reduction
-	for (uint32_t curr = input_count; curr > 1;)
-	{
-	+	tmp::static_range_switch<std::array{32, 64}>(warp_size, [&]<int WarpSize>() noexcept
-	+	{
-			hipLaunchKernelGGL(
-	-			kernel,
-	+			kernel<WarpSize>,
-				dim3(new_size(curr)),
-				dim3(block_size),
-				factor * sizeof(unsigned),
-				hipStreamDefault,
-				front,
-				back,
-				kernel_op,
-				zero_elem,
-				curr);
-	+	});
-		...
-	}
+    // Device-side reduction
+    for (uint32_t curr = input_count; curr > 1;)
+    {
+    +    tmp::static_range_switch<std::array{32, 64}>(warp_size, [&]<int WarpSize>() noexcept
+    +    {
+            hipLaunchKernelGGL(
+    -            kernel,
+    +            kernel<WarpSize>,
+                dim3(new_size(curr)),
+                dim3(block_size),
+                factor * sizeof(unsigned),
+                hipStreamDefault,
+                front,
+                back,
+                kernel_op,
+                zero_elem,
+                curr);
+    +    });
+        ...
+    }
 
 .. note::
 
-	Neither RDNA nor CDNA based AMD hardware provide independent progress
-	guarantees to lanes of the same wavefront. Lanes of a warp when targeting
-	NVIDIA hardware may execute somewhat independently, so long as the programmer
-	assists the compiler using dedicated built-in functions. (A feature called
-	Independent Thread Scheduling.) The HIP headers do not expose the necessary
-	warp primitives and their overloads.
+    Neither RDNA nor CDNA based AMD hardware provide independent progress
+    guarantees to lanes of the same wavefront. Lanes of a warp when targeting
+    NVIDIA hardware may execute somewhat independently, so long as the programmer
+    assists the compiler using dedicated built-in functions. (A feature called
+    Independent Thread Scheduling.) The HIP headers do not expose the necessary
+    warp primitives and their overloads.
 
-	Portable applications can still tap into this feature with carefully
-	``#ifdef`` -ed code, but in this particular optimiazion level it's a requirement.
-	The code implicitly relies on the lockstep behavior of a wavefront, but warps
-	do not share this property. We have to synchronize all the active lanes of a
-	warp to avoid a data race by some lanes progressing faster than others in the
-	same warp.
+    Portable applications can still tap into this feature with carefully
+    ``#ifdef`` -ed code, but in this particular optimization level it's a requirement.
+    The code implicitly relies on the lockstep behavior of a wavefront, but warps
+    do not share this property. We have to synchronize all the active lanes of a
+    warp to avoid a data race by some lanes progressing faster than others in the
+    same warp.
 
 6. Unroll all loops
 -------------------
@@ -566,32 +566,32 @@ warps/wavefronts).
 
 .. code-block:: diff
 
-	-template<uint32_t WarpSize, typename T, typename F>
-	-__global__ void kernel(
-	+template<uint32_t BlockSize, uint32_t WarpSize, typename T, typename F>
-	+__global__ __launch_bounds__(BlockSize) void kernel(
-		T* front,
-		T* back,
-		F op,
-		T zero_elem,
-		uint32_t front_size)
-	{
-	-	extern __shared__ T shared[];
-	+	__shared__ T shared[BlockSize];
+    -template<uint32_t WarpSize, typename T, typename F>
+    -__global__ void kernel(
+    +template<uint32_t BlockSize, uint32_t WarpSize, typename T, typename F>
+    +__global__ __launch_bounds__(BlockSize) void kernel(
+        T* front,
+        T* back,
+        F op,
+        T zero_elem,
+        uint32_t front_size)
+    {
+    -    extern __shared__ T shared[];
+    +    __shared__ T shared[BlockSize];
 
-		...
+        ...
 
-		// Shared reduction
-	-	for (uint32_t i = blockDim.x / 2; i > WarpSize; i /= 2)
-	+	tmp::static_for<BlockSize / 2, tmp::greater_than<WarpSize>, tmp::divide<2>>([&]<int I>()
-		{
-	-		if (tid < i)
-	-			shared[tid] = op(shared[tid], shared[tid + i]);
-	+		if (tid < I)
-	+			shared[tid] = op(shared[tid], shared[tid + I]);
-			__syncthreads();
-		}
-	+	);
+        // Shared reduction
+    -    for (uint32_t i = blockDim.x / 2; i > WarpSize; i /= 2)
+    +    tmp::static_for<BlockSize / 2, tmp::greater_than<WarpSize>, tmp::divide<2>>([&]<int I>()
+        {
+    -        if (tid < i)
+    -            shared[tid] = op(shared[tid], shared[tid + i]);
+    +        if (tid < I)
+    +            shared[tid] = op(shared[tid], shared[tid + I]);
+            __syncthreads();
+        }
+    +    );
 
 There are two notable changes beyond introducing yet another template argument
 for the kernel and the moving from ``for`` to ``tmp::static_for``:
@@ -619,19 +619,19 @@ structured communication schemes.
 
 .. code-block:: C++
 
-	// Warp reduction
-	if (tid < WarpSize)
-	{
-		T res = op(shared[tid], shared[tid + WarpSize]);
-		tmp::static_for<WarpSize / 2, tmp::not_equal<0>, tmp::divide<2>>([&]<int Delta>()
-		{
-			res = op(res, __shfl_down(res, Delta));
-		});
+    // Warp reduction
+    if (tid < WarpSize)
+    {
+        T res = op(shared[tid], shared[tid + WarpSize]);
+        tmp::static_for<WarpSize / 2, tmp::not_equal<0>, tmp::divide<2>>([&]<int Delta>()
+        {
+            res = op(res, __shfl_down(res, Delta));
+        });
 
-		// Write result from shared to back buffer
-		if (tid == 0)
-			back[bid] = res;
-	}
+        // Write result from shared to back buffer
+        if (tid == 0)
+            back[bid] = res;
+    }
 
 Moving to using warp-collective functions for communication means that control
 flow has to be uniform across warps, much like the name warp-collective
@@ -658,84 +658,84 @@ a diff but afresh.
 
 .. code-block:: C++
 
-	template<uint32_t BlockSize, uint32_t WarpSize, typename T, typename F>
-	__global__ __launch_bounds__(BlockSize) void kernel(
-		T* front,
-		T* back,
-		F op,
-		T zero_elem,
-		uint32_t front_size)
-	{
-		// ...
-	}
+    template<uint32_t BlockSize, uint32_t WarpSize, typename T, typename F>
+    __global__ __launch_bounds__(BlockSize) void kernel(
+        T* front,
+        T* back,
+        F op,
+        T zero_elem,
+        uint32_t front_size)
+    {
+        // ...
+    }
 
 The kernel signature looks the same, the factor of reduction is the same as in
 previous cases, only the implementation differs.
 
 .. code-block:: C++
 
-	static constexpr uint32_t WarpCount = BlockSize / WarpSize;
+    static constexpr uint32_t WarpCount = BlockSize / WarpSize;
 
-	__shared__ T shared[WarpCount];
+    __shared__ T shared[WarpCount];
 
-	auto read_global_safe =
-		[&](const uint32_t i) { return i < front_size ? front[i] : zero_elem; };
-	auto read_shared_safe =
-		[&](const uint32_t i) { return i < WarpCount ? shared[i] : zero_elem; };
+    auto read_global_safe =
+        [&](const uint32_t i) { return i < front_size ? front[i] : zero_elem; };
+    auto read_shared_safe =
+        [&](const uint32_t i) { return i < WarpCount ? shared[i] : zero_elem; };
 
-	const uint32_t tid = threadIdx.x,
-				bid = blockIdx.x,
-				gid = bid * (blockDim.x * 2) + tid,
-				wid = tid / WarpSize,
-				lid = tid % WarpSize;
+    const uint32_t tid = threadIdx.x,
+                bid = blockIdx.x,
+                gid = bid * (blockDim.x * 2) + tid,
+                wid = tid / WarpSize,
+                lid = tid % WarpSize;
 
-	// Read input from front buffer to local
-	T res = op(read_global_safe(gid), read_global_safe(gid + blockDim.x));
+    // Read input from front buffer to local
+    T res = op(read_global_safe(gid), read_global_safe(gid + blockDim.x));
 
 Because we communicate the results of warps through shared, we'll need as many
 elements in shared as warps within out block. Much like we could only launch
 kernels at block granularity to begin with, we can only warp reduce with
 ``WarpSize`` granularity (due to the collective nature of the cross-lane
 built-ins), hence we introduce ``read_shared_safe`` to pad overindexing by
-reading ``zero_elem`` -ents. Reading from global remains unchanged.
+reading ``zero_elem`` -s. Reading from global remains unchanged.
 
 .. code-block:: C++
 
-	// Perform warp reductions and communicate results via shared
-	// for (uint32_t ActiveWarps = WarpCount;
-	//      ActiveWarps != 0;
-	//      ActiveWarps = ActiveWarps != 1 ?
-	//          divide_ceil(ActiveWarps, WarpSize) :
-	//          ActiveWarps = 0)
-	tmp::static_for<
-		WarpCount,
-		tmp::not_equal<0>,
-		tmp::select<
-			tmp::not_equal<1>,
-			tmp::divide_ceil<WarpSize>,
-			tmp::constant<0>>>([&]<uint32_t ActiveWarps>()
-	{
-		if(wid < ActiveWarps)
-		{
-			// Warp reduction
-			tmp::static_for<WarpSize / 2, tmp::not_equal<0>, tmp::divide<2>>([&]<int Delta>()
-			{
-				res = op(res, __shfl_down(res, Delta));
-			});
+    // Perform warp reductions and communicate results via shared
+    // for (uint32_t ActiveWarps = WarpCount;
+    //      ActiveWarps != 0;
+    //      ActiveWarps = ActiveWarps != 1 ?
+    //          divide_ceil(ActiveWarps, WarpSize) :
+    //          ActiveWarps = 0)
+    tmp::static_for<
+        WarpCount,
+        tmp::not_equal<0>,
+        tmp::select<
+            tmp::not_equal<1>,
+            tmp::divide_ceil<WarpSize>,
+            tmp::constant<0>>>([&]<uint32_t ActiveWarps>()
+    {
+        if(wid < ActiveWarps)
+        {
+            // Warp reduction
+            tmp::static_for<WarpSize / 2, tmp::not_equal<0>, tmp::divide<2>>([&]<int Delta>()
+            {
+                res = op(res, __shfl_down(res, Delta));
+            });
 
-			// Write warp result from local to shared
-			if(lid == 0)
-				shared[wid] = res;
-		}
-		__syncthreads();
+            // Write warp result from local to shared
+            if(lid == 0)
+                shared[wid] = res;
+        }
+        __syncthreads();
 
-		// Read warp result from shared to local
-		res = read_shared_safe(tid);
-	});
+        // Read warp result from shared to local
+        res = read_shared_safe(tid);
+    });
 
-	// Write result from local to back buffer
-	if(tid == 0)
-		back[bid] = res;
+    // Write result from local to back buffer
+    if(tid == 0)
+        back[bid] = res;
 
 ``ActiveWarps`` goes from ``WarpCount`` until it reaches ``0``, every iteration the
 number of active warps reduces ``WarpSize``. To deal with cases when the partial
@@ -778,19 +778,19 @@ usual tuple-like ``template <size_t I> auto get<I>(...)`` interface.
 
 .. note::
 
-	This is important, because on a GPU there is no stack, but local memory is
-	provisioned from the register file and this provisioning happens statically.
-	To paraphrase, the address range of a thread's local memory is determined at
-	compile time. When an array is defined and used in local storage, the
-	compiler can only maintain its storage in the register file as long as all
-	access to the array is computable by the compiler at compile-time. It need
-	not strictly be a compile-time constant, if through constant folding or some
-	other means the compiler can resolve the addresses of the accesses. However,
-	if it cannot, the array will be backed by global memory (indicated by
-	allocating a non-zero number of spill registers observable using static
-	analysis tools) which is multiple orders of magnitude slower.
-	``hip::static_array`` via its ``hip::get<>`` interface guarantees that no such
-	spills will occur.
+    This is important, because on a GPU there is no stack, but local memory is
+    provisioned from the register file and this provisioning happens statically.
+    To paraphrase, the address range of a thread's local memory is determined at
+    compile time. When an array is defined and used in local storage, the
+    compiler can only maintain its storage in the register file as long as all
+    access to the array is computable by the compiler at compile-time. It need
+    not strictly be a compile-time constant, if through constant folding or some
+    other means the compiler can resolve the addresses of the accesses. However,
+    if it cannot, the array will be backed by global memory (indicated by
+    allocating a non-zero number of spill registers observable using static
+    analysis tools) which is multiple orders of magnitude slower.
+    ``hip::static_array`` via its ``hip::get<>`` interface guarantees that no such
+    spills will occur.
 
 .. code-block:: C++
 
@@ -816,20 +816,20 @@ The change to reading is going to happen inside `read_global_safe`:
 
 .. code-block:: C++
 
-	auto read_global_safe = [&](const int32_t i) -> hip::static_array<T, ItemsPerThread>
-	{
-		return [&]<int32_t... I>(std::integer_sequence<int32_t, I...>)
-		{
-			if(i + ItemsPerThread < front_size)
-				return hip::static_array<T, ItemsPerThread>{
-					front[i + I]...
-				};
-			else
-				return hip::static_array<T, ItemsPerThread>{
-					(i + I < front_size ? front[i + I] : zero_elem)...
-				};
-		}(std::make_integer_sequence<int32_t, ItemsPerThread>());
-	};
+    auto read_global_safe = [&](const int32_t i) -> hip::static_array<T, ItemsPerThread>
+    {
+        return [&]<int32_t... I>(std::integer_sequence<int32_t, I...>)
+        {
+            if(i + ItemsPerThread < front_size)
+                return hip::static_array<T, ItemsPerThread>{
+                    front[i + I]...
+                };
+            else
+                return hip::static_array<T, ItemsPerThread>{
+                    (i + I < front_size ? front[i + I] : zero_elem)...
+                };
+        }(std::make_integer_sequence<int32_t, ItemsPerThread>());
+    };
 
 What's happening here? Without the flexibility of a configurable
 ``ItemsPerThread`` property, we'd want to load each array element one after the
@@ -837,12 +837,12 @@ other, morally equivalent to:
 
 .. code-block:: C++
 
-	T arr[4] = {
-		front[gid + 0],
-		front[gid + 1],
-		front[gid + 2],
-		front[gid + 3]
-	}
+    T arr[4] = {
+        front[gid + 0],
+        front[gid + 1],
+        front[gid + 2],
+        front[gid + 3]
+    }
 
 This is exactly what's happening in the ``front[i + I]...`` fold-expression.
 There is a condition though: we only issue this if the entire read is operating
@@ -851,12 +851,12 @@ overindex the input, the read turns into:
 
 .. code-block:: C++
 
-	T arr[4] = {
-		i + 0 < front_size ? front[i + 0] : zero_elem,
-		i + 1 < front_size ? front[i + 1] : zero_elem,
-		i + 2 < front_size ? front[i + 2] : zero_elem,
-		i + 3 < front_size ? front[i + 3] : zero_elem
-	}
+    T arr[4] = {
+        i + 0 < front_size ? front[i + 0] : zero_elem,
+        i + 1 < front_size ? front[i + 1] : zero_elem,
+        i + 2 < front_size ? front[i + 2] : zero_elem,
+        i + 3 < front_size ? front[i + 3] : zero_elem
+    }
 
 Why do we do this? Because we want to make it easier for the compiler to
 recognize vector loads from global. Because our performance at large is
@@ -869,20 +869,20 @@ of the instruction.
 
 .. note::
 
-	Eagle eyed readers may have noticed that ``read_global_safe`` used to take an
-	``uint32_t`` as the index type and now it takes a signed integer. When indexing
-	an array with unsigned integrals, the compiler has to handle integer
-	overflows as they're defined by the C/C++ standards. It may happen, that some
-	part of the vector load indices overflow, thus not resulting in a contiguous
-	read. If you change the previously linked code to use an unsigned integral as
-	the thread id, the compiler won't emit a vector load. Signed integer overflow
-	is undefined behavior, and the optimizer assumes that a program has none in
-	it. To convey the absence of overflow to the compiler with unsigned indices,
-	add ``__builtin_assume(gid + 4 > gid)``, or the more portable
-	``[[assume]](gid + 4 > gid)`` once ``amdclang++`` supports it.
+    Eagle eyed readers may have noticed that ``read_global_safe`` used to take an
+    ``uint32_t`` as the index type and now it takes a signed integer. When indexing
+    an array with unsigned integrals, the compiler has to handle integer
+    overflows as they're defined by the C/C++ standards. It may happen, that some
+    part of the vector load indices overflow, thus not resulting in a contiguous
+    read. If you change the previously linked code to use an unsigned integral as
+    the thread id, the compiler won't emit a vector load. Signed integer overflow
+    is undefined behavior, and the optimizer assumes that a program has none in
+    it. To convey the absence of overflow to the compiler with unsigned indices,
+    add ``__builtin_assume(gid + 4 > gid)``, or the more portable
+    ``[[assume]](gid + 4 > gid)`` once ``amdclang++`` supports it.
 
 To conclude ``read_global_safe``'s implementation, it's an IILE (Immediately
-Invoked Lambda Expression), becasue ``ItemsPerThread`` is an integral value, but
+Invoked Lambda Expression), because ``ItemsPerThread`` is an integral value, but
 we need a compile-time ``iota``-like sequence of integers _as a ``pack_`` for our
 fold-expression to expand on, that change can only occur as part of template
 argument deduction, here on the immediately invoked template lambda.
@@ -897,19 +897,19 @@ cheap, no shuffling is even cheaper.
 
 .. code-block:: C++
 
-	T res = [&]()
-	{
-		// Read input from front buffer to local
-		hip::static_array<T, ItemsPerThread> arr = read_global_safe(gid);
+    T res = [&]()
+    {
+        // Read input from front buffer to local
+        hip::static_array<T, ItemsPerThread> arr = read_global_safe(gid);
 
-		// Reduce ItemsPerThread to scalar
-		tmp::static_for<1, tmp::less_than<ItemsPerThread>, tmp::increment<1>>([&]<int I>()
-		{
-			get<0>(arr) = op(get<0>(arr), get<I>(arr));
-		});
+        // Reduce ItemsPerThread to scalar
+        tmp::static_for<1, tmp::less_than<ItemsPerThread>, tmp::increment<1>>([&]<int I>()
+        {
+            get<0>(arr) = op(get<0>(arr), get<I>(arr));
+        });
 
-		return get<0>(arr);
-	}();
+        return get<0>(arr);
+    }();
 
 Outlook
 =======
@@ -931,7 +931,7 @@ With this method, one can save 1-2 kernel launches for really large inputs.
 
 .. warning::
 
-	This modification can only be executed on AMD hardware.
+    This modification can only be executed on AMD hardware.
 
 Perform the first step of the two-pass reduction, but at the end, instead of
 writing to global and reading it back in a subsequent kernel, write the partial
@@ -940,24 +940,24 @@ which all Multi Processors can access and is also on-chip memory.
 
 .. note::
 
-	The order in which blocks are scheduled isn't guaranteed by the API, even
-	though all GPUs in existence schedule them the same way, monotonically
-	increasing in their block id. Relying on this implicitly, the last block of a
-	grid is in the optimal position to observe the side-effects of all other
-	blocks (using spinlocks, or anything else) without occupying a Multi
-	Processor for longer than necessary.
+    The order in which blocks are scheduled isn't guaranteed by the API, even
+    though all GPUs in existence schedule them the same way, monotonically
+    increasing in their block id. Relying on this implicitly, the last block of a
+    grid is in the optimal position to observe the side-effects of all other
+    blocks (using spinlocks, or anything else) without occupying a Multi
+    Processor for longer than necessary.
 
 Without launching a second kernel, have the last block collect the results of
-all other blocks from GDS (either implicitly exploiting the sceduling behavior
+all other blocks from GDS (either implicitly exploiting the scheduling behavior
 or relying on Global Wave Sync, yet another AMD-specific feature) to merge them
 for a final tree-like reduction.
 
 .. note::
 
-	Both GDS and GWS aren't covered by the HIP API but reserved features of the
-	runtime. Invoking these functionalities currently requires inline AMDGCN
-	assemby. Furthermore because the GDS isn't virtualized by the runtime,
-	imposing further restrictions on concurrent scheduling of other kernels.
+    Both GDS and GWS aren't covered by the HIP API but reserved features of the
+    runtime. Invoking these functionalities currently requires inline AMDGCN
+    assembly. Furthermore because the GDS isn't virtualized by the runtime,
+    imposing further restrictions on concurrent scheduling of other kernels.
 
 Conclusion
 ==========

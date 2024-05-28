@@ -26,7 +26,7 @@ Heterogenous Programming
 
 Heterogenous programming and offloading APIs are often mentioned together.
 Heterogenous programming deals with devices of varying capabilities at once
-while the term offloading focuses on the "remote" and asnychronous aspect of
+while the term offloading focuses on the "remote" and asynchronous aspect of
 the computation. HIP encompasses both: it exposes GPGPU (General Purpose GPU)
 programming much like ordinary host-side CPU programming and let's us move data
 to and from device as need be.
@@ -71,7 +71,7 @@ work, then issue:
 
   git clone https://github.com/amd/rocm-examples.git
 
-Inside the repo, you should find ``HIP-Basic\saxpy\main.hip`` which is a
+Inside the repository, you should find ``HIP-Basic\saxpy\main.hip``, which is a
 sufficiently simple implementation of SAXPY. It was already mentioned
 that HIP code will mostly deal with where and when data has to be and
 how devices will transform it. The very first HIP calls deal with
@@ -120,8 +120,8 @@ First let's discuss the signature of the offloaded function:
   entrypoint to a device program, such that it can be launched from the host.
 - The function does not return anything, because there is no trivial way to
   construct a return channel of a parallel invocation. Device-side entrypoints
-  may not return a value, their results should be communicated using out
-  params.
+  may not return a value, their results should be communicated using output
+  parameters.
 - Device-side functions are typically called compute kernels, or just kernels
   for short. This is to distinguish them from non-graphics-related graphics
   shaders, or just shaders for short.
