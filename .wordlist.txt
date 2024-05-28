@@ -87,6 +87,7 @@ SPMV
 structs
 SYCL
 syntaxes
+templated
 typedefs
 WinGDB
 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
