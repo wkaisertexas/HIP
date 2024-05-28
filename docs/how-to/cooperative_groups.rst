@@ -19,7 +19,7 @@ elements:
 * Collectives for partitioning existing groups into new groups;
 * Operation to synchronize all threads within the group;
 * Operations to inspect the group properties;
-* Collectives that expose low-level, group-specific and often HW accelerated, operations.
+* Collectives that expose low-level, group-specific and often hardware accelerated, operations.
 
 The code difference to the original block model can be found in the following table. 
 
@@ -173,7 +173,7 @@ Multi Grid Group
 
 Represents an inter-device cooperative group type where the participating threads
 within the group spans across multiple devices, running the (same) kernel on these devices
-All the mutli grid group APIs require that you have used the appropriate launch API.
+All the multi grid group APIs require that you have used the appropriate launch API.
 
 .. code-block:: C++
 
@@ -264,9 +264,9 @@ Thread-Block Synchronization
 Grid Synchronization
 ---------------------
 
-This section describes the necessary step to be able to syncronize group over a single GPU:
+This section describes the necessary step to be able to synchronize group over a single GPU:
 
-1. Check the cooperative launch capabality on single AMD GPU:
+1. Check the cooperative launch capability on single AMD GPU:
 
 .. code-block:: C++
 
@@ -308,9 +308,9 @@ This section describes the necessary step to be able to syncronize group over a 
 Multi-Grid Synchronization
 -----------------------------
 
-This section describes the necessary step to be able to syncronize group over multiple GPU:
+This section describes the necessary step to be able to synchronize group over multiple GPU:
 
-1. Check the cooperative launch capabality over the multiple GPUs:
+1. Check the cooperative launch capability over the multiple GPUs:
 
 .. code-block:: C++
   
