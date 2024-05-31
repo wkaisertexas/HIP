@@ -298,7 +298,7 @@ This section describes the necessary step to be able to synchronize group over a
                                          hipStreamDefault));
 
 
-3. The device side synchronization over the single GPU:
+3. The device side synchronization on single GPU:
 
 .. code-block:: C++
 
@@ -308,47 +308,72 @@ This section describes the necessary step to be able to synchronize group over a
 Multi-Grid Synchronization
 -----------------------------
 
-This section describes the necessary step to be able to synchronize group over multiple GPU:
+This section describes the necessary step to be able to synchronize group over multiple GPUs:
 
-1. Check the cooperative launch capability over the multiple GPUs:
+1. Check the cooperative launch capability over multiple GPUs:
 
 .. code-block:: C++
   
+  // Check support of cooperative groups
+  std::vector<int> deviceIDs;
+  for(int deviceID = 0; deviceID < device_count; deviceID++) {
   #ifdef __HIP_PLATFORM_AMD__
-    int device               = 0;
     int supports_coop_launch = 0;
-    // Check support
-    // Use hipDeviceAttributeCooperativeMultiDeviceLaunch when launching across multiple devices
-    for (int i = 0; i < numGPUs; i++) {
-      HIP_CHECK(hipGetDevice(&device));
-      HIP_CHECK(
-          hipDeviceGetAttribute(
-            &supports_coop_launch, 
-            hipDeviceAttributeCooperativeMultiDeviceLaunch, 
-            device));
-      if(!supports_coop_launch)
-      {
-          std::cout << "Skipping, device " << device << " does not support cooperative groups"
-                    << std::endl;
-          return 0;
-      }
+    HIP_CHECK(
+      hipDeviceGetAttribute(
+        &supports_coop_launch, 
+        hipDeviceAttributeCooperativeMultiDeviceLaunch, 
+        deviceID));
+    if(!supports_coop_launch) {
+      std::cout << "Skipping, device " << deviceID << " does not support cooperative groups"
+                << std::endl;
     }
+    else
   #endif
+    {
+      std::cout << deviceID << std::endl;
+      // Collect valid deviceIDs.
+      deviceIDs.push_back(deviceID);
+    }
+  }
 
-2. Launch the cooperative kernel on single GPU:
+  if(!deviceIDs.size())
+  {
+      std::cout << "No valid GPU found." << std::endl;
+  } else {
+        std::cout << "Valid GPUs number:" << deviceIDs.size() << std::endl;
+  }
+
+2. Launch the cooperative kernel over multiple GPUs:
 
 .. code-block:: C++
 
-    void* params[] = {&d_vector, &d_block_reduced, &d_partition_reduced};
-    // Launching kernel from host.
-    HIP_CHECK(hipLaunchCooperativeKernel(vector_reduce_kernel<partition_size>,
-                                         dim3(num_blocks),
-                                         dim3(threads_per_block),
-                                         params,
-                                         0,
-                                         hipStreamDefault));
+    hipLaunchParams *launchParamsList = (hipLaunchParams*)malloc(sizeof(hipLaunchParams) * deviceIDs.size());
+    for(int deviceID : deviceIDs) {
+		// Set device
+		HIP_CHECK(hipSetDevice(deviceID));
+		
+		// Create stream
+        hipStream_t stream;
+        HIP_CHECK(hipStreamCreate(&stream));
+		
+		// Parameters
+		void* params[] = {&(d_vector[deviceID]), &(d_block_reduced[deviceID]), &(d_partition_reduced[deviceID])};
+		
+		// Set launchParams
+        launchParamsList[deviceID].func = (void*)vector_reduce_kernel<partition_size>;
+        launchParamsList[deviceID].gridDim = dim3(1);
+        launchParamsList[deviceID].blockDim = dim3(threads_per_block);
+        launchParamsList[deviceID].sharedMem = 0;
+        launchParamsList[deviceID].stream = stream;
+        launchParamsList[deviceID].args = params;
+    }
 
-3. The device side synchronization over the multiple GPU:
+    HIP_CHECK(hipLaunchCooperativeKernelMultiDevice(launchParamsList,
+                                                    (int)deviceIDs.size(),
+                                                    hipCooperativeLaunchMultiDeviceNoPreSync));
+
+3. The device side synchronization over multiple GPUs:
 
 .. code-block:: C++
 
